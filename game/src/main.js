@@ -24,6 +24,7 @@
   let accumulated = 0;
 
   const view = new JadeView(document.getElementById("game"), {
+    onDefeat: guideFirstDefeat,
     onChooseUpgrade(id) {
       if (game.chooseUpgrade(id)) {
         draw();
@@ -39,6 +40,32 @@
     onReplay: restart,
   });
   const button = view.pushButton;
+
+  function guideFirstDefeat() {
+    const key = "jade-circuit.first-defeat-merge";
+    // Prefer a browser-wide record. Session storage also works in restricted embeds.
+    let recorded = false;
+    for (const store of ["localStorage", "sessionStorage"]) {
+      try {
+        if (window[store].getItem(key)) return false;
+        window[store].setItem(key, "seen");
+        recorded = true;
+        break;
+      } catch { /* Try the next available store. */ }
+    }
+    if (!recorded) {
+      if (window.name.includes(key)) return false;
+      window.name += " " + key;
+    }
+    const url = new URL("home.html", location.href);
+    for (const param of ["seed", "fixture"]) {
+      if (query.has(param)) url.searchParams.set(param, query.get(param));
+    }
+    url.searchParams.set("guide", "first-merge");
+    url.hash = "equipment";
+    location.replace(url);
+    return true;
+  }
 
   function draw() {
     view.render(game.read());

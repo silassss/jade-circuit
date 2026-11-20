@@ -117,8 +117,17 @@
   font-weight: 900; font-size: max(15px, 4cqw); text-shadow: 0 1px 2px #103756;
   box-shadow: inset 0 1px #d1f9ff, 0 .45cqw #071835; cursor: pointer;
 }
+.merge-entry { position: relative; order: 2; }
+#merge-finger {
+  position: absolute; z-index: 2; right: 5%; top: 70%; pointer-events: none;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: 8cqw; line-height: 1;
+  transform: rotate(-20deg); filter: drop-shadow(0 .4cqw .3cqw #071835);
+  animation: merge-tap .9s ease-in-out infinite alternate;
+}
+@keyframes merge-tap { to { transform: translateY(-1.4cqw) rotate(-20deg); } }
+@media (prefers-reduced-motion: reduce) { #merge-finger { animation: none; } }
 #show-merge {
-  order: 2; position: relative; isolation: isolate; width: 30cqw; border: 0;
+  position: relative; isolation: isolate; width: 30cqw; border: 0;
   clip-path: var(--cut); background: linear-gradient(#c7f7ff,#44c4ff 72%,#2665af);
   font-size: max(16px,4.6cqw);
 }

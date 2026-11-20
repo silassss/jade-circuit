@@ -101,6 +101,7 @@
 
     const launchUrl = new URL("index.html", location.href);
     launchUrl.search = location.search;
+    launchUrl.searchParams.delete("guide");
     launchUrl.searchParams.set("gear", JadeGear.encode(worn) || "none");
     if (location.protocol === "file:") launchUrl.searchParams.set("talentLevels", JSON.stringify(progress.levels));
     for (const link of document.querySelectorAll("a.start")) link.href = launchUrl.href;
@@ -171,8 +172,18 @@
     panel.scrollTop = 0;
     const heading = panel.querySelector("h1");
     document.title = "Jade Circuit · " + heading.textContent;
-    if (moveFocus) heading.focus({ preventScroll: true });
+    if (panel.id === "equipment" && !byId("merge-finger").hidden) byId("show-merge").focus({ preventScroll: true });
+    else if (moveFocus) heading.focus({ preventScroll: true });
   }
   window.addEventListener("hashchange", () => showPage(true));
+  window.addEventListener("pageshow", () => {
+    if (location.hash === "#equipment" && !byId("merge-finger").hidden) {
+      requestAnimationFrame(() => {
+        if (document.activeElement === document.body && !byId("equipment").hidden) {
+          byId("show-merge").focus({ preventScroll: true });
+        }
+      });
+    }
+  });
   showPage(false);
 })();

@@ -7,6 +7,9 @@
   const content = byId("detail-content");
   const confirm = byId("detail-action");
   const message = byId("gear-message");
+  const mergeButton = byId("show-merge");
+  const finger = byId("merge-finger");
+  let guidingMerge = new URL(location.href).searchParams.get("guide") === "first-merge";
   let selection = null;
   let opener = null;
 
@@ -139,6 +142,12 @@
   }
   function refresh() {
     const state = JadeLoadout.read();
+    if (guidingMerge) {
+      const hasPair = mergeable(state).length > 0;
+      finger.hidden = !hasPair;
+      message.textContent = hasPair ? "Courier down. Tap Merge to combine two matching spares." : "Courier down. Collect two matching spares to merge gear.";
+      mergeButton.setAttribute("aria-describedby", "gear-message");
+    }
     byId("gear-left").replaceChildren();
     byId("gear-right").replaceChildren();
     // Match the two equipment columns in the Rally Loadout reference.
@@ -188,7 +197,7 @@
     if (!keys.length) bag.append(node("p","All gear is equipped."));
     if (dialog.open) renderPanel();
   }
-  byId("show-merge").onclick = event => openPanel("merge",null,event.currentTarget);
+  mergeButton.onclick = event => openPanel("merge",null,event.currentTarget);
   dialog.querySelector(".gear-close").onclick = () => dialog.close();
   dialog.addEventListener("close", () => {
     if (dialog.open) return;
@@ -207,6 +216,14 @@
       if (!item || !await JadeLoadout.update(action,item.key,(before,after) => {
         powerChange = {before, after};
       })) { refresh(); return; }
+      if (action === "merge" && guidingMerge) {
+        guidingMerge = false;
+        finger.hidden = true;
+        mergeButton.removeAttribute("aria-describedby");
+        const url = new URL(location.href);
+        url.searchParams.delete("guide");
+        history.replaceState(history.state, "", url);
+      }
       JadeAudio.sound(action === "merge" ? "confirm" : "click");
       message.textContent = action === "merge" ? "Merged · " + qualities[item.rank]+" "+item.name+" added to inventory."
         : (action === "remove" ? "Unequipped · " : "Equipped · ") + item.name;

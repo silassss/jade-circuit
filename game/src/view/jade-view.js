@@ -1121,6 +1121,7 @@
 
     showResult(phase) {
       const won = phase === 'victory';
+      if (!won && this.callbacks.onDefeat?.()) return;
       this.dialog.className = 'jade-dialog jade-result';
       this.dialog.innerHTML = `<h2 id="jade-dialog-title">${won ? 'Circuit cleared' : 'Courier down'}</h2><button class="jade-replay" type="button">Replay</button>`;
       const replay = this.dialog.querySelector('button');

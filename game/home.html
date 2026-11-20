@@ -68,12 +68,15 @@
       </div>
       <div class="gear-bag">
         <div class="bag-header"><h2>Inventory <small id="bag-count"></small></h2>
-          <button id="show-merge" class="gear-action" type="button">Merge</button>
+          <span class="merge-entry">
+            <button id="show-merge" class="gear-action" type="button">Merge</button>
+            <span id="merge-finger" aria-hidden="true" hidden>👆</span>
+          </span>
         </div>
+        <p id="gear-message" role="status"></p>
         <div class="gear-scroll">
           <div id="gear-list" aria-label="Spare equipment"></div>
         </div>
-        <p id="gear-message" role="status"></p>
       </div>
       <div id="power-popup" popover="manual" aria-hidden="true">
         <img src="assets/rally/power.webp" alt=""><strong id="power-total"></strong><b id="power-delta"></b>
