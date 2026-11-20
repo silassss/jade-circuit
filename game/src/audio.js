@@ -13,7 +13,6 @@
   let paused = false;
   let finished = false;
   let hiddenPage = false;
-  let blocked = false;
 
   // Each cue has a gain relative to the music. Reuse overlapping voices for the cabinet sounds.
   const clips = {
@@ -40,7 +39,7 @@
 
   function silent() { return muted || paused || hiddenPage || document.hidden; }
   function updateToggle() {
-    const on = !muted && !blocked;
+    const on = !muted;
     toggle.textContent = on ? "Sound on" : "Sound off";
     toggle.setAttribute("aria-pressed", String(on));
   }
@@ -48,9 +47,9 @@
     if (silent() || finished) {
       music.pause();
     } else if (music.paused) {
-      music.play().then(() => { blocked = false; updateToggle(); }).catch(error => {
-        if (error.name === "NotAllowedError") { blocked = true; updateToggle(); }
-      });
+      // A browser may defer autoplay. The next interaction retries playback
+      // while the toggle continues to reflect the player's preference.
+      music.play().catch(() => {});
     }
   }
   function stopEffects() {
@@ -86,8 +85,7 @@
   }
 
   toggle.addEventListener("click", () => {
-    muted = !(muted || blocked);
-    blocked = false;
+    muted = !muted;
     try { localStorage.setItem(preference, muted ? "yes" : "no"); } catch {}
     if (muted) stopEffects();
     updateToggle();
