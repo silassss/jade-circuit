@@ -14,7 +14,7 @@
     ["hailMary", "Hail Mary", "Your last reserve coin becomes a heavy brass slug that shoves the pile where it lands."],
     ["lifeSteal", "Life Steal", "Every 5 coins you push over the lip feeds a Heal coin onto the tray."],
     ["heartOfSteel", "Heart of Steel", "At full HP, collecting a Heal coin grants its healing value as shield."],
-    ["tower", "Coin Tower", "Drop a 30-coin spiral tower onto the tray."],
+    ["tower", "Coin Tower", "Raise a hollow wall of 30 coins from inside the machine."],
   ];
   const cards = [
     ...["Common", "Uncommon"].flatMap((rarity, rank) =>

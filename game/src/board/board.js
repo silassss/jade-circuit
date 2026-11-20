@@ -48,7 +48,7 @@
       z: (level + .5) * thickness, thickness };
   }
 
-  function create(seed, { fixture = 'opening', legacyEpicPhysics = false, onImpact = () => {} } = {}) {
+  function create(seed, { fixture = 'opening', legacyEpicPhysics = false, liftTowers = true, onImpact = () => {} } = {}) {
     const random = seededRandom(seed);
     const coins = [];
     const collisionOrder = [];
@@ -57,6 +57,7 @@
     let strokeTime = null;
     let shelf = REAR;
     let loading = true;
+    let lift = null;
 
     function addCoin(kind, x, y, z, vy = 0) {
       const type = Object.hasOwn(COIN_TYPES, kind) && COIN_TYPES[kind];
@@ -180,6 +181,15 @@
     }
 
     function constrain(coin) {
+      if (lift && lift.clearance > 0) {
+        const dx = coin.x - .5, dy = coin.y - .62;
+        const distance = Math.hypot(dx, dy);
+        const edge = lift.clearance + coin.radius;
+        if (distance < edge) {
+          coin.x = .5 + edge * (distance ? dx / distance : 1);
+          coin.y = .62 + edge * (distance ? dy / distance : 0);
+        }
+      }
       coin.x = clamp(coin.x, coin.radius, 1 - coin.radius);
       const half = coin.thickness / 2;
       if (coin.y <= LIP) coin.z = Math.max(half, coin.z);
@@ -257,6 +267,7 @@
     function advanceBodies(dt, falls) {
       collisionOrder.length = 0;
       for (const coin of coins) {
+        if (coin.liftHeight !== undefined) continue;
         if (coin.edgeState !== null) {
           advanceEdge(coin, dt);
           continue;
@@ -295,6 +306,10 @@
       let standing = 0;
       for (const coin of coins) {
         const half = coin.thickness / 2;
+        if (coin.liftHeight !== undefined) {
+          coins[standing++] = coin;
+          continue;
+        }
         if (coin.edgeState !== null) {
           if (coin.z <= COLLECTION_Z) {
             falls.push({ coinId: coin.coinId, kind: coin.kind, x: coin.lipX });
@@ -350,8 +365,21 @@
           shelf = REAR + STROKE * (extension - retraction);
           if (strokeTime >= 1.28) strokeTime = null;
         }
+        if (lift) {
+          lift.progress = Math.min(1, lift.progress + slice / 1.4);
+          lift.clearance = .211 * smooth(lift.progress / .32);
+          const travel = smooth((lift.progress - .22) / .73);
+          for (const coin of lift.coins) {
+            coin.z = coin.liftHeight - lift.depth * (1 - travel);
+            coin.previousZ = coin.z;
+          }
+          if (lift.progress === 1) {
+            for (const coin of lift.coins) delete coin.liftHeight;
+            lift = null;
+          }
+        }
         const moving = advanceBodies(slice, falls);
-        quiet = moving || strokeTime !== null || falls.length ? 0 : quiet + slice;
+        quiet = moving || lift || strokeTime !== null || falls.length ? 0 : quiet + slice;
       }
       return falls;
     }
@@ -380,11 +408,17 @@
           ? Math.max(top, coin.z + coin.thickness / 2) : top, 0);
       if (tower && !legacyEpicPhysics) {
         const wall = Array.from({ length: count }, (_, i) => towerCourse(i));
-        const floor = Math.max(...wall.slice(0, 10).map(p => topAt(p.x, p.y)));
+        const depth = wall[wall.length - 1].z + wall[0].thickness;
+        const floor = liftTowers ? -depth : Math.max(...wall.slice(0, 10).map(p => topAt(p.x, p.y)));
+        if (liftTowers) lift = { progress: 0, clearance: 0, depth, coins: [] };
         for (const p of wall) {
           const coin = addCoin('ordinary', p.x, p.y, floor + p.z);
           coin.thickness = p.thickness;
           coin.tower = true;
+          if (lift) {
+            coin.liftHeight = p.z;
+            lift.coins.push(coin);
+          }
         }
         quiet = 0;
         return;
@@ -493,6 +527,7 @@
 
     return {
       coins, insert, shove, step, feed, dropReward, convertCoin, tickStatic, clearHazards, slam,
+      get liftProgress() { return lift?.progress ?? null; },
       get settled() { return quiet >= QUIET_TIME; },
       get shelf() { return shelf; }
     };

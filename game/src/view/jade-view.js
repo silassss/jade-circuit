@@ -330,10 +330,16 @@
   }
 
   function drawCoin(ctx, coin, texture) {
-    const { kind, x, y, z = 0, lean = 0, rotation = 0 } = coin;
+    const { kind, x, y, lean = 0, rotation = 0 } = coin;
+    let z = coin.z ?? 0;
     const special = kind !== 'ordinary';
     const radius = coin.radius ?? (special ? .055 : .048);
-    const half = (coin.thickness ?? (special ? .039 : .021)) / 2;
+    let half = (coin.thickness ?? (special ? .039 : .021)) / 2;
+    if (coin.liftHeight !== undefined && z < half) {
+      const exposed = z + half;
+      if (exposed <= 0) return;
+      z = half = exposed / 2;
+    }
     const cos = Math.cos(lean);
     const sin = Math.sin(lean);
     const faceY = y + half * sin;
@@ -380,6 +386,19 @@
 
   function coinDepth(coin) {
     return coin.y + coin.z * (coin.tower ? 2.1 : .42);
+  }
+
+  function drawLiftSocket(ctx, progress) {
+    const radius = .216 * Math.min(1, progress / .32);
+    if (radius <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (1 - progress) / .12);
+    for (const [scale, color] of [[1, '#a7b4a2'], [.96, '#283938'], [.90, '#091b1c'], [.53, '#314747']]) {
+      traceRim(ctx, projectedRim(.5, .62, .001, radius * scale, 1, 0));
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   function coinTexture(coin, textures) {
@@ -880,6 +899,7 @@
       ctx.save();
       traceTray(ctx);
       ctx.clip();
+      if (this.state?.liftProgress != null) drawLiftSocket(ctx, this.state.liftProgress);
       coins.forEach((coin) => drawCoinShadow(ctx, coin));
       ctx.restore();
       drawShelf(ctx, shelf, this.materials);

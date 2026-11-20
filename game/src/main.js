@@ -176,18 +176,8 @@
   }
 
   game = createRun();
-  if (query.get("preview") === "upgrades") {
-    // Replay ordinary paid pushes so the preview opens on a real settled cabinet.
-    for (let frame = 0; frame < 5000; frame++) {
-      const phase = game.read().phase;
-      if (phase === "planning") game.press();
-      else if (phase !== "inserting" && phase !== "resolving") break;
-      game.step();
-    }
-    feedback = [];
-  }
   window.jadeSession = Object.freeze({ inspect: () => game.inspect(), getReplay: () => game.getReplay() });
   draw();
-  if (query.get("preview") !== "upgrades") startEntry();
+  startEntry();
   window.requestAnimationFrame(frame);
 })();

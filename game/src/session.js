@@ -19,11 +19,12 @@
     runDraft = !legacyUpgradeReplay && !legacyBalance,
     draftSeed = seed,
     legacyEpicPhysics = false,
+    liftTowers = true,
     boardFactory = root.JadeBoard?.create,
     combatFactory = root.JadeCombat?.create,
     onFeedback = () => {},
   } = {}) {
-    const board = boardFactory(seed, { fixture, legacyEpicPhysics, onImpact(contact) {
+    const board = boardFactory(seed, { fixture, legacyEpicPhysics, liftTowers, onImpact(contact) {
       const event = { type: "hailMaryImpact", pushId, tick, ...contact };
       events.push(event);
       onFeedback(event);
@@ -63,7 +64,8 @@
     }
 
     function read() {
-      return { phase, seed, fixture, tick, targetX: targetX(), coins: board.coins, shelf: board.shelf, combat: combat.getState() };
+      return { phase, seed, fixture, tick, targetX: targetX(), coins: board.coins, shelf: board.shelf,
+        liftProgress: board.liftProgress ?? null, combat: combat.getState() };
     }
 
     function inspect() {
@@ -72,7 +74,7 @@
 
     function getReplay() {
       const record = { seed, fixture, tick, actions, events, phase, combat: combat.getState() };
-      if (!legacyBalance) record.balanceVersion = runDraft ? (legacyEpicPhysics ? 3 : 4) : 2;
+      if (!legacyBalance) record.balanceVersion = !runDraft ? 2 : legacyEpicPhysics ? 3 : liftTowers ? 5 : 4;
       if (runDraft) record.draftSeed = draftSeed;
       if (combatConfig) record.combatConfig = combatConfig;
       if (equipmentId) record.equipmentId = equipmentId;
@@ -156,12 +158,17 @@
     function nextStage() {
       if (phase !== "stageClear" || !combat.nextStage()) return false;
       actions.push({ type: "nextStage", tick });
-      phase = "planning";
+      phase = board.liftProgress != null ? "towerLift" : "planning";
       return true;
     }
 
     function step() {
       tick += 1;
+      if (phase === "towerLift") {
+        setupFalls.push(...board.step(stepSeconds));
+        if (board.liftProgress == null) phase = "planning";
+        return;
+      }
       if (phase === "planning" || phase === "inserting") aimTick += 1;
       if (phase === "inserting" && tick === nextDropTick) drop();
       if (phase === "slam") {
@@ -227,6 +234,7 @@
     const game = create({ ...options, seed: record.seed, fixture: record.fixture, equipmentId: record.equipmentId,
       combatConfig: record.combatConfig, runDraft, draftSeed: record.draftSeed, legacyUpgradeReplay, legacyBalance: record.balanceVersion === undefined,
       legacyEpicPhysics: record.balanceVersion === 3,
+      liftTowers: record.balanceVersion >= 5,
       legacyIncome: record.combat?.maxReserve === undefined ? record.combat?.regen : undefined });
     for (const action of record.actions) {
       while (game.read().tick < action.tick) game.step();
