@@ -1,0 +1,186 @@
+.equipment {
+  --navy: #101f42;
+  --ice: #8bdfff;
+  --cut: polygon(7% 0, 93% 0, 100% 50%, 93% 100%, 7% 100%, 0 50%);
+  display: grid;
+  grid-template-rows: minmax(0, 47%) minmax(0, 1fr);
+  height: 100%;
+  padding-bottom: calc(var(--dock-height) + 1.3cqw);
+  color: #f4f9ff;
+  background: var(--navy);
+}
+.equipment h1, .equipment h2, .equipment p { margin: 0; }
+.gear-scene {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 1.8cqw;
+  padding: 2.5cqw 7.8cqw 2.3cqw;
+  background: #55b8ce;
+}
+.gear-courier, .gear-courier img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gear-courier { z-index: -1; overflow: hidden; }
+.gear-courier img { object-fit: cover; }
+.gear-heading { display: flex; justify-content: center; }
+.gear-heading h1 {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: 60%;
+  height: 9.4cqw;
+  clip-path: var(--cut);
+  background: #0b325a;
+  color: white;
+  font: 900 5.9cqw/1 "Trebuchet MS", sans-serif;
+  text-shadow: 0 .45cqw #102641, 0 0 .6cqw #102641;
+}
+.gear-heading h1::before, .gear-heading h1::after {
+  content: ""; position: absolute; z-index: -1; clip-path: var(--cut);
+}
+.gear-heading h1::before { inset: .55cqw; background: linear-gradient(#75d9ff, #2a88d1 58%, #ffcb52 90%); }
+.gear-heading h1::after {
+  inset: .95cqw 1.3cqw;
+  background: conic-gradient(from 45deg,#ffcf48 0 25%,#ffac24 0 50%,#fff1a3 0 75%,#ffda55 0)
+    left 3% center / 2.2cqw 2.2cqw no-repeat,
+    linear-gradient(#2984c9, #104779 60%, #16304f);
+}
+.gear-back {
+  position: absolute; top: 2.5cqw; left: 2.5cqw;
+  display: grid; place-items: center; width: max(34px,8cqw); height: max(34px,8cqw);
+  background: #143452d9; border-radius: 50%; color: white; font: 800 6cqw/1 Arial,sans-serif;
+}
+.gear-stage { min-height: 0; padding-block: 1cqw; display: flex; align-items: center; justify-content: space-between; }
+.gear-slots { display: grid; gap: 1.2cqw; width: 17cqw; }
+.gear-tile, .merge-chip, .item-summary {
+  --edge: #b9c7dc; --rim: #73859f; --face: #374762; --deep: #202d46;
+}
+.tier-2 { --edge: #b6ef91; --rim: #72b65f; --face: #316047; --deep: #193b37; }
+.tier-3 { --edge: #8bedff; --rim: #40a7e4; --face: #165c89; --deep: #123558; }
+.gear-tile {
+  position: relative; display: grid; place-items: center; isolation: isolate;
+  min-width: 0; width: 100%; aspect-ratio: 1; padding: .6cqw; cursor: pointer;
+  border: .6cqw solid var(--edge); border-radius: 1.8cqw;
+  background: radial-gradient(ellipse at bottom right, var(--face), var(--deep) 90%);
+  box-shadow: inset 0 0 0 1px var(--rim), 0 .4cqw .3cqw #071632aa;
+}
+.gear-icon { display: block; object-fit: contain; width: 94%; height: 94%; min-height: 0; filter: drop-shadow(0 .3cqw .2cqw #08132290); }
+.gear-tile small, #bag-count {
+  position: absolute; width: 1px; height: 1px; margin: -1px; clip-path: inset(50%); overflow: hidden;
+}
+.gear-slots .gear-tile {
+  border-color: #e0b4ff; background: radial-gradient(at bottom right, #572b75, #291b43);
+  box-shadow: inset 0 0 0 2px #9266ad, 0 0 0 .45cqw #222347, 0 .35cqw 1.3cqw #502968;
+}
+.gear-slots [data-slot="Armor"], .gear-slots [data-slot="Boots"] {
+  border-color: #8af9ff; background: radial-gradient(at bottom right, #116276, #113249);
+  box-shadow: inset 0 0 0 2px #409dae, 0 0 0 .45cqw #173047, 0 .35cqw 1.3cqw #145966;
+}
+.gear-slots .gear-tile::after {
+  content: "✦"; position: absolute; top: -.9cqw; right: -.4cqw; color: #fff9a0;
+  text-shadow: 0 1px 2px #725412; font-size: 3.7cqw;
+}
+.gear-slots .tier-0 { border-color: #afc7d1; background: #233e50db; box-shadow: inset 0 0 0 1px #8095a5, 0 .4cqw .3cqw #0b2c3e99; }
+.gear-slots .tier-0 .gear-icon { opacity: .42; filter: grayscale(.6); }
+.gear-slots .tier-0::after { content: "+"; right: .5cqw; top: -.1cqw; color: white; font-weight: 900; }
+.gear-stats {
+  display: flex; align-items: center; justify-content: space-evenly; min-height: 6.5cqw;
+  background: #092a43ee; clip-path: polygon(3% 0,97% 0,100% 50%,97% 100%,3% 100%,0 50%);
+}
+.gear-stats span { display: flex; align-items: center; gap: 1cqw; font-weight: 900; white-space: nowrap; }
+.gear-stats small { font-size: max(11px, 3.1cqw); }
+.gear-stats strong { font-size: max(13px, 3.7cqw); font-variant-numeric: tabular-nums; }
+.gear-stats span::before { content: ""; display: block; width: 4.5cqw; height: 4.5cqw; background: center / contain no-repeat; }
+.gear-stats [data-stat-icon="HP"]::before { content: "♥"; color: #ff5369; height: auto; font: bold 5.2cqw/1 Arial,sans-serif; }
+.gear-stats [data-stat-icon="ATK"]::before { background-image: url('../assets/equipment/blade.png'); }
+.gear-stats [data-stat-icon="Shield"]::before { background-image: url('../assets/equipment/stat-shield.png'); }
+.gear-bag {
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  border: 1px solid #506090; border-radius: 4cqw 4cqw 2.5cqw 2.5cqw;
+  background: linear-gradient(135deg,#1b2c56,#112246 65%); box-shadow: inset 0 0 0 .7cqw #293c66;
+}
+.bag-header { display: flex; align-items: center; gap: 1.6cqw; padding: 2.2cqw 2.6cqw; }
+.bag-header::after { content: ""; flex: 1; order: 1; height: .4cqw; background: #5974ac; }
+.bag-header h2 {
+  position: relative; isolation: isolate; padding: 1.6cqw 5.2cqw; font-size: 4.8cqw;
+  line-height: 1.1; clip-path: var(--cut); background: #718dc5;
+}
+.bag-header h2::before {
+  content: ""; position: absolute; inset: .4cqw .55cqw; z-index: -1;
+  clip-path: inherit; background: linear-gradient(#1f3359,#132544);
+}
+.gear-action {
+  border: 2px solid #8ee5ff; border-bottom-color: #297dc5; border-radius: 2cqw;
+  padding: 0 5cqw; min-height: max(38px, 8.2cqw);
+  color: white; background: linear-gradient(#51ceff,#079be9 55%,#0772c1);
+  font-weight: 900; font-size: max(15px, 4cqw); text-shadow: 0 1px 2px #103756;
+  box-shadow: inset 0 1px #d1f9ff, 0 .45cqw #071835; cursor: pointer;
+}
+#show-merge {
+  order: 2; position: relative; isolation: isolate; width: 30cqw; border: 0;
+  clip-path: var(--cut); background: linear-gradient(#c7f7ff,#44c4ff 72%,#2665af);
+  font-size: max(16px,4.6cqw);
+}
+#show-merge::before {
+  content: ""; position: absolute; inset: .7cqw .85cqw; z-index: -1;
+  clip-path: inherit; background: linear-gradient(#28c6ff,#079ce9 55%,#0874c3);
+}
+#show-merge:focus-visible::before { background: #155b9c; box-shadow: inset 0 0 0 3px #ffe389; }
+.gear-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding: 1cqw 5.2cqw 3cqw; }
+#gear-list { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 2cqw; }
+#gear-list>p { grid-column: 1/-1; }
+#gear-message { flex: none; color: #c7f5ee; font-size: max(11px,2.8cqw); }
+#gear-message:not(:empty) { padding: .4cqw 5.2cqw 1.7cqw; }
+.equipment :is(button,select,a):focus-visible { outline: 3px solid #ffe389; outline-offset: 1px; }
+#gear-dialog {
+  width: min(89vw,390px); max-height: 90dvh; padding: 20px; border: 2px solid #658dc4; border-radius: 14px;
+  background: linear-gradient(145deg,#20385c,#101f3a); color: #f4f9ff; box-shadow: 0 14px 70px #041022da;
+}
+#gear-dialog::backdrop { background: #071728bc; }
+#gear-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+#gear-dialog h2 { font-size: 24px; }
+.gear-close { width: 40px; height: 40px; border-radius: 8px; background: #29476a; font-size: 24px; cursor: pointer; }
+#gear-dialog select { width: 100%; padding: 10px; color: #f1fcfa; background: #223951; border: 1px solid #7596b7; border-radius: 5px; font: inherit; }
+#detail-content p { margin: 12px 0; line-height: 1.4; }
+#detail-action { width: 100%; margin-top: 6px; }
+.item-summary,.merge-chip { display: flex; align-items: center; gap: 12px; color: var(--edge); }
+.item-summary .gear-icon,.merge-chip .gear-icon { width: 60px; height: 60px; padding: 3px; background: var(--face); border: 2px solid var(--edge); border-radius: 8px; }
+.merge-preview { display: flex; justify-content: center; align-items: center; gap: 24px; margin: 16px 0; }
+.merge-chip { flex-direction: column; gap: 4px; }
+.effect-line { color: #bcf1dd; }
+
+/* The item card follows the tapped-item panel in Dicero's equipment sequence. */
+#gear-dialog.item-panel {
+  width: min(92vw, 385px); padding: 0 0 16px; border: 2px solid #506689;
+  color: #173454; background: #c3edf4; box-shadow: 0 9px 0 #111f38, 0 16px 55px #071327a8;
+}
+.item-panel header { padding: 10px 14px; background: linear-gradient(110deg,#556588,#7d87a7); color: white; }
+.item-panel h2 { text-shadow: 0 2px #344261; }
+.item-panel .gear-close { color: white; }
+.item-panel #detail-content { padding: 0 14px; }
+.item-panel .item-summary { margin: 10px 0 14px; align-items: stretch; }
+.item-summary .gear-icon { flex: none; width: 68px; height: 68px; }
+.item-identity { flex: 1; padding: 7px 10px; border-radius: 6px; background: #a1cee4; color: #193853; }
+.item-identity small,.item-identity strong { display: block; }
+.item-identity small { margin-bottom: 4px; font-weight: bold; }
+.item-panel h3 { margin: 0; padding: 5px 10px; border-radius: 6px 6px 0 0; background: #475f85; color: white; font-size: 15px; }
+.quality-effects { list-style: none; margin: 0 0 14px; padding: 5px; background: #add6e8; border-radius: 0 0 6px 6px; }
+.quality-effects li { display: grid; grid-template-columns: 5.3em 1fr; gap: 5px; padding: 7px; font-size: 13px; }
+.quality-effects li.current { background: #fff0ac; border-radius: 4px; }
+.item-panel #detail-action { display: block; width: min(180px,70%); margin: 12px auto 0; }
+#power-popup {
+  position: fixed; inset: 36% auto auto 50%; transform: translate(-50%, -50%); margin: 0;
+  width: min(75vw,310px); padding: 7px 18px; border: none; pointer-events: none;
+  background: linear-gradient(#40362b,#171820 50%,#25212a); color: #ffe586;
+  clip-path: polygon(4% 0,96% 0,100% 50%,96% 100%,4% 100%,0 50%);
+  font: 900 clamp(19px,5vw,26px)/1.15 "Trebuchet MS",sans-serif; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 2px #e8c16c,inset 0 -2px #c39444;
+}
+#power-popup:popover-open { display: flex; align-items: center; justify-content: center; gap: 7px; }
+#power-popup::before,#power-popup::after { content: "◆"; color: #e4bc63; font-size: 12px; }
+#power-popup::before { margin-right: auto; }
+#power-popup::after { margin-left: auto; }
+#power-popup img { width: 24px; height: 24px; object-fit: contain; }
+#power-delta { font-size: .8em; color: #94f286; }
+#power-popup[data-direction="down"] #power-delta { color: #ff8b91; }

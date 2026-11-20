@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101e29">
+  <title>Jade Circuit</title>
+  <style>
+    :root { color-scheme: dark; font: 600 1rem system-ui, sans-serif; background: #101e29; color: #fff2d1; }
+    body { margin: 0; }
+    iframe, section { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+    section { display: grid; align-content: center; justify-items: center; background: #101e29; }
+    [hidden] { display: none; }
+    progress { width: min(16rem, 70vw); accent-color: #70ddbb; }
+    button { padding: .6em 1.3em; font: inherit; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <iframe title="Jade Circuit game" aria-hidden="true" inert allow="autoplay; fullscreen"></iframe>
+  <section aria-label="Loading Jade Circuit">
+    <p role="status">Loading Jade Circuit…</p>
+    <progress aria-label="Game loading progress"></progress>
+    <button type="button" hidden>Retry</button>
+  </section>
+  <script type="module">
+    const frame = document.querySelector('iframe');
+    const cover = document.querySelector('section');
+    const meter = document.querySelector('progress');
+    const message = document.querySelector('[role=status]');
+    const retry = document.querySelector('button');
+    retry.onclick = () => location.reload();
+
+    const assets = ['rally/rain-circuit.webp', 'cabinet-materials.png', 'arena.png',
+      'cabinet-shell.png', 'controls.png', 'trough.png', 'courier-idle.webp', 'puddle-jelly-idle.webp'];
+    meter.max = assets.length + 1;
+    meter.value = 0;
+    async function loadImage(file) {
+      const image = new Image();
+      image.src = 'game/assets/' + file;
+      await image.decode();
+      meter.value++;
+    }
+    const lobbyReady = new Promise((resolve, reject) => {
+      frame.addEventListener('load', () => {
+        const lobby = frame.contentDocument;
+        if (!lobby?.querySelector('#enemies .enemy')) return reject(new Error('Lobby unavailable'));
+        meter.value++;
+        resolve();
+      }, { once: true });
+      frame.src = 'game/home.html' + location.search;
+    });
+    try {
+      await Promise.all([lobbyReady, ...assets.map(loadImage)]);
+      cover.hidden = true;
+      frame.inert = false;
+      frame.removeAttribute('aria-hidden');
+      frame.focus();
+    } catch {
+      message.textContent = 'Jade Circuit couldn’t finish loading.';
+      meter.hidden = true;
+      retry.hidden = false;
+      retry.focus();
+    }
+  </script>
+</body>
+</html>

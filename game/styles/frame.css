@@ -1,0 +1,24 @@
+body {
+  --usable-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  box-sizing: border-box;
+  height: 100vh;
+  margin: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+@supports (height: 100dvh) {
+  body {
+    --usable-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: 100dvh;
+  }
+}
+
+.game-frame {
+  position: relative;
+  --cabinet-ratio: 440 / 956;
+  width: min(100%, calc(var(--usable-height) * var(--cabinet-ratio)), 495px);
+  aspect-ratio: var(--cabinet-ratio);
+}

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#307eb8">
+  <title>Jade Circuit · Adventure</title>
+  <link rel="stylesheet" href="styles/frame.css">
+  <link rel="stylesheet" href="styles/home.css">
+  <link rel="stylesheet" href="styles/equipment.css">
+  <link rel="stylesheet" href="styles/talents.css">
+  <script defer src="src/audio.js" data-music="pynchon"></script>
+  <script defer src="src/gear.js"></script>
+  <script defer src="src/combat/combat.js"></script>
+  <script defer src="src/talents.js"></script>
+  <script defer src="src/loadout.js"></script>
+  <script defer src="src/equipment-page.js"></script>
+  <script defer src="src/home.js"></script>
+</head>
+<body>
+  <main class="game-frame cabinet">
+    <section id="adventure" class="lobby" aria-labelledby="world-name">
+      <video class="lobby-wind" data-src="assets/rally/rain-circuit-wind.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
+      <header class="wallet">
+        <a class="identity" href="#courier" aria-label="Courier profile, power 240">
+          <img src="assets/rally/portrait.webp" alt="">
+          <span>Courier<small><img src="assets/rally/power.webp" alt=""><b data-power>240</b></small></span>
+        </a>
+        <span class="counter"><img src="assets/rally/gem.webp" alt="Gems">320</span>
+        <span class="counter"><img src="assets/rally/coin.webp" alt="Gold"><b data-balance="gold"></b></span>
+        <span class="counter"><img src="assets/rally/energy.webp" alt="Energy">20/20</span>
+      </header>
+      <button type="button" class="lobby-sound" data-sound-toggle aria-label="Game sound" aria-pressed="true">Sound on</button>
+      <div class="chapter">
+        <span>CHAPTER 01</span>
+        <h1 id="world-name" tabindex="-1">Jade Circuit</h1>
+        <a href="#encounters" aria-label="Best stage 1-1, view encounters">Best: 1-1</a>
+      </div>
+      <div class="shortcuts" aria-label="Chapter shortcuts">
+        <button type="button" disabled><img src="assets/rally/event.webp" alt="">Events</button>
+        <button type="button" disabled><img src="assets/rally/pass.webp" alt="">Pass</button>
+        <button type="button" disabled><img src="assets/rally/gift.webp" alt="">Offers</button>
+      </div>
+      <div class="departure">
+        <div class="rewards">
+          <button type="button" disabled><img src="assets/rally/chest.webp" alt="">Chapter<br>Chest</button>
+          <button type="button" disabled aria-label="Expedition, 2 hours 7 minutes 19 seconds"><img src="assets/rally/expedition.webp" alt="">02:07:19</button>
+          <button type="button" disabled><img src="assets/rally/star-challenge.webp" alt="">Star<br>Challenge</button>
+        </div>
+        <a class="start rally-start" href="index.html" aria-label="Start run, energy cost 5">
+          <span>START</span><small><img src="assets/rally/energy.webp" alt="">5</small>
+        </a>
+      </div>
+    </section>
+    <section id="equipment" class="equipment" aria-labelledby="gear-heading" hidden>
+      <div class="gear-scene">
+        <div class="gear-courier"><img src="assets/equipment/viaduct.jpg" alt="Roller Courier on the Jade Circuit viaduct"></div>
+        <header class="gear-heading">
+          <a class="gear-back" href="#adventure" aria-label="Back to Adventure">‹</a>
+          <h1 id="gear-heading" tabindex="-1">Equipment</h1>
+        </header>
+        <div class="gear-stage">
+          <div class="gear-slots" id="gear-left"></div>
+          <div class="gear-slots" id="gear-right"></div>
+        </div>
+        <div id="gear-stats" class="gear-stats" aria-label="Starting stats"></div>
+      </div>
+      <div class="gear-bag">
+        <div class="bag-header"><h2>Inventory <small id="bag-count"></small></h2>
+          <button id="show-merge" class="gear-action" type="button">Merge</button>
+        </div>
+        <div class="gear-scroll">
+          <div id="gear-list" aria-label="Spare equipment"></div>
+        </div>
+        <p id="gear-message" role="status"></p>
+      </div>
+      <div id="power-popup" popover="manual" aria-hidden="true">
+        <img src="assets/rally/power.webp" alt=""><strong id="power-total"></strong><b id="power-delta"></b>
+      </div>
+        <dialog id="gear-dialog" aria-labelledby="detail-title">
+          <header><h2 id="detail-title"></h2><button class="gear-close" type="button" aria-label="Close">×</button></header>
+          <div id="detail-content"></div>
+          <button class="gear-action" id="detail-action" type="button"></button>
+        </dialog>
+    </section>
+    <section id="courier" class="sheet" aria-labelledby="courier-name" hidden>
+      <a class="back" href="#adventure">‹ Adventure</a>
+      <img src="assets/rally/portrait.webp" alt="">
+      <h1 id="courier-name" tabindex="-1">Roller Courier</h1>
+      <dl class="stats">
+        <div><dt>Starting HP</dt><dd data-stat="hp"></dd></div>
+        <div><dt>Attack</dt><dd data-stat="attack"></dd></div>
+        <div><dt>Starting coins</dt><dd data-stat="reserve"></dd></div>
+        <div><dt>Coins per round</dt><dd data-stat="regen"></dd></div>
+      </dl>
+    </section>
+    <section id="encounters" class="sheet" aria-labelledby="route-name" hidden>
+      <a class="back" href="#adventure">‹ Adventure</a>
+      <small>CHAPTER 01 / JADE CIRCUIT</small>
+      <h1 id="route-name" tabindex="-1">Encounters</h1>
+      <div id="enemies"></div>
+      <p>Your health, shield, coins and tray carry through all ten stages.</p>
+      <a class="start sheet-link" href="index.html">Start run</a>
+    </section>
+    <section id="talents" class="lobby talents" aria-labelledby="talents-name" hidden>
+      <h1 id="talents-name" tabindex="-1">Talents</h1>
+      <ul id="talent-list" aria-label="Permanent talents"></ul>
+      <div class="talent-result" role="status" aria-live="polite" aria-atomic="true">
+        <img id="result-icon" alt="">
+        <div><strong id="draw-title"></strong><small id="draw-effect"></small></div>
+      </div>
+      <div class="talent-action">
+        <button id="talent-draw" class="rally-start" type="button"><span>DRAW TALENT</span><small id="draw-price"></small></button>
+        <small id="draw-message" role="status"></small>
+      </div>
+    </section>
+    <nav class="dock" aria-label="Game navigation">
+      <button type="button" disabled aria-label="Shop"><img src="assets/rally/shop.webp" alt=""></button>
+      <a href="#equipment" aria-label="Equipment"><img src="assets/rally/gear.webp" alt=""><span hidden>Equipment</span></a>
+      <a href="#adventure" aria-current="page" aria-label="Adventure"><img src="assets/rally/adventure.webp" alt=""><span>Adventure</span></a>
+      <a href="#talents" aria-label="Talents"><img src="assets/rally/upgrades.webp" alt=""><span hidden>Talents</span></a>
+      <button type="button" disabled aria-label="Pets"><img src="assets/rally/pets.webp" alt=""></button>
+    </nav>
+  </main>
+  <noscript>Enable JavaScript to browse the lobby, or <a href="index.html">open the run</a>.</noscript>
+</body>
+</html>
