@@ -66,6 +66,7 @@
     return bitmap(96, (ctx) => {
       const palette = {
         ordinary: ['#f5d17e', '#cb9d52', '#94612e', '#ffdc8f', '#b58240'],
+        tower: ['#ffe4a0', '#d38346', '#884324', '#ffc377', '#a45c30'],
         guard: ['#62edff', '#168cce', '#084874', '#8ee7ff', '#08436e'],
         spark: ['#fff495', '#e66e13', '#78250d', '#ffe66b', '#a33810'],
         static: ['#efcaff', '#793aa9', '#351642', '#efc9ff', '#522267'],
@@ -263,6 +264,7 @@
   }
 
   const COIN_METAL = {
+    tower: ['#61351e', '#efaf6b', '#88431e'],
     ordinary: ['#5b3c22', '#d0a363', '#7d512b'],
     guard: ['#082a48', '#2da1d0', '#0b426e'],
     heal: ['#0b3722', '#47aa6c', '#19633d'],
@@ -338,9 +340,9 @@
     const faceZ = z + half * cos;
     const top = projectedRim(x, faceY, faceZ, radius, cos, sin);
     const bottom = projectedRim(x, y - half * sin, z - half * cos, radius, cos, sin);
-    const metal = COIN_METAL[kind] || COIN_METAL.ordinary;
+    const metal = COIN_METAL[coin.tower && kind === 'ordinary' ? 'tower' : kind] || COIN_METAL.ordinary;
     ctx.save();
-    ctx.translate(0, -flightOffset(z));
+    ctx.translate(0, coin.tower && z > 0 ? 0 : -flightOffset(z));
     drawSidewall(ctx, top, bottom, metal);
 
     // Paint the collider's exact face first. Map the inset stamp and its thin
@@ -356,6 +358,13 @@
     ctx.transform((right.x-left.x)/2, (right.y-left.y)/2, (front.x-rear.x)/2, (front.y-rear.y)/2, center.x, center.y);
     ctx.rotate(special ? rotation * .035 : rotation);
     ctx.drawImage(texture, -.98, -.98, 1.96, 1.96);
+    if (coin.heavy) {
+      ctx.beginPath();
+      ctx.arc(0, 0, .79, 0, Math.PI * 2);
+      ctx.strokeStyle = '#fff0a8';
+      ctx.lineWidth = .13;
+      ctx.stroke();
+    }
     if (kind === 'static') {
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 1.65px sans-serif';
@@ -369,6 +378,27 @@
     }
   }
 
+  function coinDepth(coin) {
+    return coin.y + coin.z * (coin.tower ? 2.1 : .42);
+  }
+
+  function coinTexture(coin, textures) {
+    return textures[coin.tower && coin.kind === 'ordinary' ? 'tower' : coin.kind] || textures.ordinary;
+  }
+
+  function towerIcon(texture) {
+    const wall = Array.from({ length: 30 }, (_, i) => ({
+      ...JadeBoard.towerCourse(i), kind: 'ordinary', tower: true,
+    })).sort((a, b) => coinDepth(a) - coinDepth(b));
+    return bitmap(160, ctx => {
+      const center = project(.5, .62, .055);
+      ctx.translate(80, 80);
+      ctx.scale(1.17, 1.17);
+      ctx.translate(-center.x, -center.y);
+      for (const coin of wall) drawCoin(ctx, coin, texture);
+    }).toDataURL();
+  }
+
   function drawGlassReflections(ctx, coins, textures) {
     for (const side of [0, 1]) {
       ctx.save();
@@ -379,7 +409,7 @@
         if (distance > .16 || coin.y > FRONT || coin.z > .065 || coin.edgeState === 'falling') continue;
         ctx.globalAlpha = .18 * (1 - distance / .2);
         const reflected = { ...coin, x: side + (side - coin.x) };
-        drawCoin(ctx, reflected, textures[coin.kind] || textures.ordinary);
+        drawCoin(ctx, reflected, coinTexture(coin, textures));
       }
       ctx.restore();
     }
@@ -460,7 +490,7 @@
     }
 
     tally(count, attack, multiplier) {
-      const base = String(count * attack);
+      const base = String(Math.round(count * attack * 100) / 100);
       const combo = count ? `×${multiplier}` : '—';
       if (this.base.textContent !== base) this.base.textContent = base;
       if (this.combo.textContent !== combo) {
@@ -554,7 +584,8 @@
       if (this.panel.dataset.state === 'result') return;
       this.panel.dataset.state = 'result';
       this.total.textContent = recap.damage;
-      this.equation.textContent = recap.blocked ? 'SHIELDED' : recap.ordinaryFalls ? `${recap.ordinaryFalls * attack} × ${recap.multiplier} =` : 'NO COIN DAMAGE';
+      const base = Math.round(recap.ordinaryFalls * attack * 100) / 100;
+      this.equation.textContent = recap.blocked ? 'SHIELDED' : recap.ordinaryFalls ? `${base} × ${recap.multiplier}${recap.critical ? ' × 2 CRIT' : ''} =` : 'NO COIN DAMAGE';
       this.resultUntil = tick + TALLY_RESULT_TICKS;
     }
 
@@ -614,6 +645,7 @@
       this.textures = { ordinary: coinFace('ordinary'), guard: coinFace('guard'), coinShower: coinFace('coinShower'), heal: coinFace('heal') };
       this.textures.spark = coinFace('spark');
       this.textures.static = coinFace('static');
+      this.textures.tower = coinFace('tower');
       this.state = null;
       this.runPhase = null;
       root.innerHTML = `
@@ -709,6 +741,7 @@
       this.tally = new CoinDamageTally(this.cabinet, (event) => this.combatImpact(event));
       this.fields = Object.fromEntries([...root.querySelectorAll('[data-field]')].map((node) => [node.dataset.field, node]));
       const icons = { coin: this.textures.ordinary.toDataURL(), heart: iconArt('heart').toDataURL(), sword: iconArt('sword').toDataURL(), hourglass: iconArt('hourglass').toDataURL(), shield: iconArt('shield').toDataURL() };
+      this.towerIcon = towerIcon(this.textures.tower);
       root.querySelectorAll('[data-icon]').forEach((node) => { node.src = icons[node.dataset.icon]; });
       const staticIcon = bitmap(96, ctx => {
         ctx.drawImage(this.textures.static, 0, 0);
@@ -751,9 +784,9 @@
       if (previous && combat.fight !== previous.combat.fight) this.clearEffects();
       this.tally.advance(snapshot, previous);
       const { hero, enemy } = this.tally.sequence ?? combat;
-      const modalPhase = ['stageClear', 'victory', 'defeat'].includes(phase);
+      const modalPhase = ['upgrade', 'stageClear', 'victory', 'defeat'].includes(phase);
       const displayPhase = modalPhase && this.tally.sequence ? 'resolving' : phase;
-      const opened = this.runPhase !== displayPhase;
+      const opened = this.runPhase !== displayPhase || (displayPhase === 'upgrade' && combat.rerolled !== previous?.combat.rerolled);
       this.runPhase = displayPhase;
       this.drawBoard();
 
@@ -819,7 +852,8 @@
       if (!opened) return;
       if (displayPhase === 'victory' || displayPhase === 'defeat') JadeAudio.finish(true);
       if (modalPhase && displayPhase === phase) JadeAudio.sound(phase === 'defeat' ? 'defeat' : 'clear');
-      if (displayPhase === 'stageClear') this.showNextStage(combat);
+      if (displayPhase === 'upgrade') this.showDraft(combat);
+      else if (displayPhase === 'stageClear') this.showNextStage(combat);
       else if (displayPhase === 'victory' || displayPhase === 'defeat') this.showResult(displayPhase);
       else this.dialog.hidden = true;
     }
@@ -853,7 +887,7 @@
       const creditLeavingFeeder = coins.some((coin) => coin.kind === 'ordinary' && coin.y < .28
         && coin.z > .12 && project(coin.x, coin.y, coin.z).y - flightOffset(coin.z) < FEEDER_BOTTOM + 4);
       drawFeeder(ctx, targetX, this.textures.ordinary, phase, combat?.reserve > 0 && !creditLeavingFeeder);
-      const ordered = [...coins].sort((first, second) => (first.y + (first.z || 0) * .42) - (second.y + (second.z || 0) * .42));
+      const ordered = [...coins].sort((first, second) => coinDepth(first) - coinDepth(second));
       ctx.save();
       ctx.beginPath();
       // The gold catch rim stands in front of the fall path. Its upper contour
@@ -870,7 +904,7 @@
       ctx.clip();
       const visibleHazards = new Set();
       for (const coin of ordered) {
-        const center = drawCoin(ctx, coin, this.textures[coin.kind] || this.textures.ordinary);
+        const center = drawCoin(ctx, coin, coinTexture(coin, this.textures));
         if (!center || coin.edgeState === 'falling' || !['planning', 'inserting', 'resolving'].includes(phase)) continue;
         visibleHazards.add(coin.coinId);
         this.updateHazard(coin, center);
@@ -939,6 +973,95 @@
       this.hazardTip.dataset.kind = marker.dataset.kind;
       this.hazardTip.style.left = 'clamp(32%, ' + marker.style.left + ', 68%)';
       this.hazardTip.style.top = marker.style.top;
+    }
+
+    showDraft(combat, selected = 0) {
+      const offers = combat.offers;
+      this.dialog.className = 'jade-dialog jade-spotlight';
+      this.dialog.innerHTML = `<div class="spotlight-picker">
+        <h2 id="jade-dialog-title">Select skill</h2>
+        <div class="spotlight-hand"></div>
+        <div class="spotlight-pager">
+          <button type="button" aria-label="Previous skill">‹</button>
+          <span></span>
+          <button type="button" aria-label="Next skill">›</button>
+        </div>
+        <button class="jade-replay spotlight-take" type="button">Take skill</button>
+        <button class="jade-reroll" type="button"></button>
+        <span class="jade-sr" role="status" aria-live="polite" aria-atomic="true"></span>
+      </div>`;
+      const picker = this.dialog.firstElementChild;
+      const hand = picker.querySelector('.spotlight-hand');
+      const count = picker.querySelector('.spotlight-pager span');
+      const take = picker.querySelector('.spotlight-take');
+      const status = picker.querySelector('[role="status"]');
+      const faces = offers.map((offer, index) => {
+        const face = document.createElement('button');
+        face.type = 'button';
+        face.className = 'spotlight-card';
+        // The original draft IDs are also recorded in replays.
+        const rarity = offer.rarity === 'Uncommon' ? 'Rare' : offer.rarity;
+        face.dataset.rarity = rarity;
+        face.innerHTML = '<span class="spotlight-art"><img alt="" draggable="false"></span><span class="spotlight-tier"></span><strong></strong><span class="spotlight-description"></span>';
+        face.querySelector('img').src = offer.effect === 'tower' ? this.towerIcon : ASSETS + 'upgrades/' + offer.effect + '.webp';
+        face.querySelector('.spotlight-tier').textContent = rarity;
+        face.querySelector('strong').textContent = offer.name;
+        face.querySelector('.spotlight-description').textContent = offer.description;
+        face.tabIndex = -1;
+        face.onclick = () => select(index);
+        hand.append(face);
+        return face;
+      });
+      function select(index) {
+        selected = (index + offers.length) % offers.length;
+        const card = offers[selected];
+        faces.forEach((face, i) => {
+          face.dataset.position = i === selected ? 'center' : i === (selected + 1) % offers.length ? 'right' : 'left';
+          face.setAttribute('aria-pressed', String(i === selected));
+        });
+        count.textContent = (selected + 1) + ' / ' + offers.length;
+        take.setAttribute('aria-label', 'Take skill: ' + card.name);
+        status.textContent = [count.textContent, faces[selected].dataset.rarity, card.name, card.description].join('. ');
+      }
+      const [previous, next] = picker.querySelectorAll('.spotlight-pager button');
+      previous.onclick = () => select(selected - 1);
+      next.onclick = () => select(selected + 1);
+      picker.onkeydown = event => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        select(selected + (event.key === 'ArrowLeft' ? -1 : 1));
+      };
+      let startX;
+      hand.ontouchstart = event => { startX = event.touches.length === 1 ? event.touches[0].clientX : null; };
+      hand.ontouchcancel = () => { startX = null; };
+      hand.addEventListener('touchend', event => {
+        if (startX == null) return;
+        const delta = event.changedTouches[0].clientX - startX;
+        startX = null;
+        if (Math.abs(delta) < 32) return;
+        event.preventDefault();
+        select(selected + (delta < 0 ? 1 : -1));
+      }, { passive: false });
+      take.onclick = () => this.callbacks.onChooseUpgrade(offers[selected].id);
+      const reroll = picker.querySelector('.jade-reroll');
+      reroll.textContent = combat.rerolled ? 'Reroll used' : '▶   Watch ad to reroll';
+      reroll.disabled = combat.rerolled;
+      reroll.onclick = () => this.showMockAd(combat, selected);
+      select(selected);
+      this.dialog.hidden = false;
+      take.focus({ preventScroll: true });
+    }
+
+    showMockAd(combat, selected) {
+      this.dialog.className = 'jade-dialog jade-draft jade-ad-preview';
+      this.dialog.innerHTML = `<header><small>REWARDED AD PREVIEW</small><h2 id="jade-dialog-title">Reroll upgrades</h2>
+        <p>Finish the demo ad to draw three new choices.</p></header>
+        <button class="jade-replay" type="button">Finish demo ad</button>
+        <button class="jade-reroll" type="button">Keep current choices</button>`;
+      const [finish, cancel] = this.dialog.querySelectorAll('button');
+      finish.onclick = () => this.callbacks.onReroll();
+      cancel.onclick = () => this.showDraft(combat, selected);
+      finish.focus({ preventScroll: true });
     }
 
     showNextStage(combat) {
@@ -1029,7 +1152,7 @@
           this.animateFighter(this.enemy, 'jade-fighter-hit');
           const id = this.state.combat.upgrade;
           this.effect(id === 'railgun' ? 'jade-rail-beam' : id === 'orbitBlades' ? 'jade-blade-flight' : 'jade-strike-wave');
-          this.effect('jade-enemy-number', `−${event.amount}`);
+          this.effect('jade-enemy-number', `${event.critical ? 'Crit ' : ''}−${event.amount}`);
           break;
         }
         case 'railgun':
@@ -1073,7 +1196,23 @@
       }
       const report = this.roundReport || (this.roundReport = []);
       switch (event.type) {
-        case 'paidInsertion': JadeAudio.sound('insert'); break;
+        case 'paidInsertion':
+          JadeAudio.sound('insert');
+          break;
+        case 'hailMaryImpact': {
+          JadeAudio.sound('hit', 1.4, .68);
+          if (!this.tally.reduced.matches) this.animateFighter(this.cabinet, 'jade-cabinet-quake');
+          const contact = project(event.x, event.y, event.z);
+          const ring = document.createElement('span');
+          ring.className = 'jade-impact-ring';
+          ring.style.left = (contact.x / WIDTH * 100) + '%';
+          ring.style.top = ((contact.y - flightOffset(event.z)) / HEIGHT * 100) + '%';
+          this.effects.append(ring);
+          ring.addEventListener('animationend', () => ring.remove(), { once: true });
+          this.effect('jade-token-result', 'Hail Mary', event.x);
+          report.push('Hail Mary shook the cabinet');
+          break;
+        }
         case 'stroke': JadeAudio.sound('stroke'); break;
         case 'coinConverted': JadeAudio.sound('hazard'); break;
         case 'clawSlam':
@@ -1122,7 +1261,7 @@
           report.push(`Gained ${event.amount} shield`);
           break;
         case 'ordinaryDamage':
-          report.push(`${event.ordinaryFalls} ${event.ordinaryFalls === 1 ? 'coin' : 'coins'}. ${event.ordinaryFalls * this.state.combat.hero.attack} base damage times ${event.multiplier} for ${event.amount} coin damage`);
+          report.push(`${event.ordinaryFalls} coins dealt ${event.amount} damage${event.critical ? ' on a critical hit' : ''}`);
           break;
         case 'railgun':
           if (event.stagger) report.push('Railgun delayed the enemy');

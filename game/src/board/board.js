@@ -38,7 +38,17 @@
     };
   }
 
-  function create(seed, { fixture = 'opening' } = {}) {
+  function towerCourse(index) {
+    const level = Math.floor(index / 10);
+    const angle = (index % 10 + level * .5) * Math.PI / 5;
+    // Ten tangent discs make a closed ring. Each upper disc bridges a seam.
+    const radius = COIN_TYPES.ordinary.radius / Math.sin(Math.PI / 10);
+    const thickness = .037;
+    return { x: .5 + radius * Math.cos(angle), y: .62 + radius * Math.sin(angle),
+      z: (level + .5) * thickness, thickness };
+  }
+
+  function create(seed, { fixture = 'opening', legacyEpicPhysics = false, onImpact = () => {} } = {}) {
     const random = seededRandom(seed);
     const coins = [];
     const collisionOrder = [];
@@ -144,6 +154,7 @@
         // as that face extends under its center of mass.
         const upper = upperIsB ? b : a;
         const lower = upperIsB ? a : b;
+        if (upper.impactPending) upper.landed = true;
         if (distance < lower.radius) upper.faceSupported = true;
         const slipX = (b.x - b.previousX) - (a.x - a.previousX);
         const slipY = (b.y - b.previousY) - (a.y - a.previousY);
@@ -225,6 +236,24 @@
       }
     }
 
+    function quake(slug) {
+      for (const coin of collisionOrder) {
+        if (coin === slug || coin.edgeState) continue;
+        const dx = coin.x - slug.x;
+        const dy = coin.y - slug.y;
+        const distance = Math.hypot(dx, dy);
+        const strength = Math.max(0, 1 - distance / .48);
+        if (!strength) continue;
+        const radius = Math.max(.035, distance);
+        // Lateral scatter and a short hop break the static friction in the pile.
+        coin.vx += 1.8 * strength * dx / radius;
+        coin.vy += strength * (.95 + 1.35 * dy / radius);
+        coin.vz = Math.max(0, coin.vz) + strength * .92;
+        coin.quakeRising = true;
+      }
+      onImpact({ coinId: slug.coinId, x: slug.x, y: slug.y, z: slug.z });
+    }
+
     function advanceBodies(dt, falls) {
       collisionOrder.length = 0;
       for (const coin of coins) {
@@ -254,7 +283,7 @@
           for (let j = i + 1; j < collisionOrder.length; j++) {
             const b = collisionOrder[j];
             // Sorting by depth keeps the broad phase small on a dense tray.
-            if (b.y - a.y > 0.127) break;
+            if (b.y - a.y > 0.136) break;
             resolveContact(a, b);
           }
         }
@@ -262,6 +291,7 @@
       }
 
       let moving = false;
+      let impact = null;
       let standing = 0;
       for (const coin of coins) {
         const half = coin.thickness / 2;
@@ -275,12 +305,25 @@
           continue;
         }
 
+        if (coin.impactPending && (coin.landed || coin.z <= half + .001)) {
+          coin.impactPending = false;
+          if (legacyEpicPhysics) {
+            for (const neighbor of collisionOrder) {
+              const distance = Math.hypot(coin.x - neighbor.x, coin.y - neighbor.y);
+              if (neighbor !== coin && distance < .17 && neighbor.y >= coin.y - .025) {
+                neighbor.vy += 1.9 * (1 - distance / .17);
+              }
+            }
+          } else impact = coin;
+        }
+
         // Carry some contact motion into the next step, with low restitution.
         // The remaining correction resolves interpenetration without a kick.
         coin.vx = clamp(coin.vx * 0.60 + (coin.x - coin.previousX) * 0.40 / dt, -1.4, 1.4);
         coin.vy = clamp(coin.vy * 0.60 + (coin.y - coin.previousY) * 0.40 / dt, -1.4, 1.4);
         const vz = (coin.z - coin.previousZ) / dt;
-        coin.vz = vz > 0 ? vz * 0.24 : vz;
+        if (coin.quakeRising && vz <= 0) delete coin.quakeRising;
+        coin.vz = vz > 0 && !coin.quakeRising ? vz * 0.24 : vz;
         const overhang = clamp((coin.y + coin.radius - LIP) / coin.radius, 0, 1);
         const tilt = overhang * overhang * 0.10;
         coin.lean += (tilt - coin.lean) * Math.min(1, dt * 12);
@@ -290,7 +333,8 @@
         coins[standing++] = coin;
       }
       coins.length = standing;
-      return moving;
+      if (impact) quake(impact);
+      return moving || impact !== null;
     }
 
     function step(dt) {
@@ -312,11 +356,56 @@
       return falls;
     }
 
-    function insert(x, kind = 'ordinary') {
+    function insert(x, kind = 'ordinary', heavy = false) {
       if (!Number.isFinite(x)) throw new TypeError('Coin x must be a number');
       const coin = addCoin(kind, x, 0.195, 0.225);
+      if (heavy) {
+        coin.heavy = true;
+        coin.impactPending = true;
+        coin.radius = .068;
+        coin.thickness = .035;
+        coin.inverseMass = .24;
+        coin.y = .24;
+        coin.vy = .95;
+      }
       quiet = 0;
       return coin;
+    }
+
+    function dropReward(kind, count) {
+      const tower = kind === 'tower';
+      const base = coins.filter(coin => !coin.edgeState && coin.y > .36 && coin.y < .88);
+      const topAt = (x, y) => coins.reduce((top, coin) =>
+        Math.hypot(coin.x - x, coin.y - y) < coin.radius + .05
+          ? Math.max(top, coin.z + coin.thickness / 2) : top, 0);
+      if (tower && !legacyEpicPhysics) {
+        const wall = Array.from({ length: count }, (_, i) => towerCourse(i));
+        const floor = Math.max(...wall.slice(0, 10).map(p => topAt(p.x, p.y)));
+        for (const p of wall) {
+          const coin = addCoin('ordinary', p.x, p.y, floor + p.z);
+          coin.thickness = p.thickness;
+          coin.tower = true;
+        }
+        quiet = 0;
+        return;
+      }
+      const towerBase = tower ? topAt(.5, .62) + .025 : 0;
+      for (let i = 0; i < count; i++) {
+        if (tower) {
+          // Fifteen interlocking pairs form a narrow, twisting arcade tower.
+          const level = Math.floor(i / 2);
+          const angle = (i % 2) * Math.PI + level * Math.PI / 9;
+          const coin = addCoin('ordinary', .5 + .049 * Math.cos(angle), .62 + .049 * Math.sin(angle),
+            towerBase + level * COIN_TYPES.ordinary.thickness);
+          coin.tower = true;
+        } else {
+          const target = base[Math.floor(random() * base.length)];
+          const x = target?.x ?? .2 + .6 * random();
+          const y = target?.y ?? .4 + .4 * random();
+          addCoin(kind, x, y, topAt(x, y) + .12);
+        }
+      }
+      quiet = 0;
     }
 
     function shove() {
@@ -403,7 +492,7 @@
     loading = false;
 
     return {
-      coins, insert, shove, step, feed, convertCoin, tickStatic, clearHazards, slam,
+      coins, insert, shove, step, feed, dropReward, convertCoin, tickStatic, clearHazards, slam,
       get settled() { return quiet >= QUIET_TIME; },
       get shelf() { return shelf; }
     };
@@ -418,5 +507,5 @@
     });
   }
 
-  global.JadeBoard = Object.freeze({ create, insertShower });
+  global.JadeBoard = Object.freeze({ create, insertShower, seededRandom, towerCourse });
 })(globalThis);

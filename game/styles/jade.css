@@ -72,6 +72,22 @@ body:has(#game) {
 .jade-enemy-caption { position: absolute; top: 10.55%; right: 3%; max-width: 49%; color: #fff2cb; font-weight: bold; font-size: 2.7cqw; text-shadow: 0 1px 3px #102a2a, 0 0 3px #102a2a; }
 .jade-travelling .jade-enemy-caption, .jade-travelling .jade-horn-light { visibility: hidden; }
 .jade-board-shake { animation: jade-board-jolt .4s ease-out; }
+.jade-cabinet-quake { animation: jade-cabinet-quake .32s ease-out; }
+@keyframes jade-cabinet-quake {
+  10% { translate: -.8% .45%; }
+  28% { translate: .75% -.35%; }
+  47% { translate: -.5% .23%; }
+  68% { translate: .3% -.12%; }
+  85% { translate: -.13% .06%; }
+}
+.jade-impact-ring { position: absolute; width: 37cqw; height: 12cqw; border: .65cqw solid #ffe1a1;
+  border-radius: 50%; translate: -50% -50%; box-shadow: 0 0 1.2cqw #e7ae5e; animation: jade-impact-spread .32s ease-out both; }
+@keyframes jade-impact-spread { from { scale: .16; opacity: .9; } to { scale: 1; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .jade-cabinet-quake { animation: none; }
+  .jade-impact-ring { animation: jade-impact-fade .23s linear both; }
+}
+@keyframes jade-impact-fade { from { opacity: .65; } to { opacity: 0; } }
 @keyframes jade-board-jolt { 15%, 55% { transform: translateX(-1.2%); } 35%, 75% { transform: translateX(1%); } }
 @media (prefers-reduced-motion: reduce) { .jade-board-shake { animation: none; } }
 .jade-travelling { --journey-time: 1.55s; }
@@ -398,6 +414,23 @@ body:has(#game) {
 .jade-card-description small { color: #a6e8d1; font-size: 2.95cqw; font-weight: 800; }
 .jade-card-description > span { font-size: 2.95cqw; color: #d6e8df; line-height: 1.13; }
 .jade-card-arrow { color: #a8d3c5; font-size: 5.8cqw; }
+.jade-draft { top: auto; bottom: 4%; padding: 3.8cqw; box-shadow: 0 0 0 200vmax #04161965, inset 0 .55cqw #50756b; }
+.jade-draft header { padding: .4cqw .4cqw 2.7cqw; }
+.jade-draft header small, .jade-draft .jade-card-description small { font-weight: 800; font-size: 2.65cqw; letter-spacing: .12em; text-transform: uppercase; }
+.jade-draft header small { display: block; color: #b1e4cb; margin-bottom: 1cqw; }
+.jade-draft header p { font-size: 3.2cqw; color: #d4e8de; margin: 1.2cqw 0 0; }
+.jade-draft .jade-offer { --accent: #d2dccc; border-left: .85cqw solid var(--accent); padding: 1.6cqw; }
+.jade-draft [data-rarity="Uncommon"] { --accent: #8cedb2; background: linear-gradient(110deg,#284d40,#173c38); }
+.jade-draft [data-rarity="Epic"] { --accent: #e5b4ff; background: linear-gradient(110deg,#4d375d,#302e48); }
+.jade-draft .jade-card-description { gap: .65cqw; }
+.jade-draft .jade-card-description small { color: var(--accent); }
+.jade-draft .jade-card-description > span { font-size: 3.15cqw; line-height: 1.22; }
+.draft-art { height: 13cqw; display: grid; place-items: center; position: relative; overflow: hidden; border-radius: 2cqw; background: #081c247a; }
+.draft-art img { width: 88%; height: 88%; object-fit: contain; }
+.jade-reroll { display: block; width: 100%; margin-top: 2.2cqw; min-height: 10.8cqw; border: .3cqw solid #cca66a; border-radius: 2cqw; background: #293936; color: #ffdda0; font-family: inherit; font-size: 3.6cqw; font-weight: 800; cursor: pointer; }
+.jade-reroll:focus-visible { outline: .5cqw solid white; }
+.jade-reroll:disabled { opacity: .65; cursor: default; }
+.jade-ad-preview { bottom: 19%; text-align: center; }
 .jade-card-art { position: relative; display: block; height: 12.8cqw; overflow: hidden; border-radius: 1.8cqw; box-shadow: inset 0 0 0 .25cqw #78d9c88c; }
 .jade-card-art::before, .jade-card-art::after { content: ''; position: absolute; display: block; }
 .jade-card-railgun { background: radial-gradient(ellipse at 70% 32%, #447e9e, #19364a 58%, #10252f); }
@@ -589,3 +622,52 @@ body:has(#game) {
 @media (prefers-reduced-motion: reduce) {
   .jade-hazard-marker[data-kind]::before { animation: none; }
 }
+
+/* Between-fight Spotlight selection over the live cabinet. */
+.jade-dialog.jade-spotlight {
+  inset: 0; padding: 0; overflow: hidden; border: 0; border-radius: 0;
+  background: linear-gradient(#03191b78, #03191bb8 42%, #03191bb8 65%, #03191b91);
+  box-shadow: none; z-index: 9;
+}
+.spotlight-picker { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.jade-spotlight h2 {
+  display: flex; align-items: center; justify-content: center; gap: 2.5cqw;
+  margin: 0 0 5.5cqw; color: #fff1ce; font-size: 7.6cqw; text-shadow: 0 2px 3px #152323;
+}
+.jade-spotlight h2::before, .jade-spotlight h2::after { content: ''; width: 7cqw; height: 2px; background: #e5c789; }
+.spotlight-hand { position: relative; width: 100%; height: 79cqw; touch-action: pan-y; }
+.spotlight-card {
+  --trim: #8ada96; --mid: #427548; --base: #1a3b30; --light: #e5fbd6;
+  position: absolute; left: 50%; top: 0; width: 55cqw; height: 75.3cqw;
+  margin: 0; padding: 1.9cqw; box-sizing: border-box; display: flex; flex-direction: column;
+  align-items: stretch; border: .5cqw solid var(--trim); border-radius: 3.2cqw;
+  color: var(--light); background: linear-gradient(140deg,var(--base),#112627 78%);
+  box-shadow: inset 0 0 0 .45cqw #112325, inset 0 0 0 .7cqw var(--mid), 0 1.1cqw 3cqw #0007;
+  font-family: inherit; text-align: center; cursor: pointer;
+  transition: transform 180ms ease-out, filter 180ms ease-out;
+}
+.spotlight-card[data-rarity="Rare"] { --trim:#81caff; --mid:#4276a4; --base:#183d58; --light:#e3f3ff; }
+.spotlight-card[data-rarity="Epic"] { --trim:#d8a2ff; --mid:#7c519e; --base:#42294e; --light:#f6e8ff; }
+.spotlight-card[data-position="center"] { z-index: 2; transform: translateX(-50%); }
+.spotlight-card[data-position="left"] { transform: translate(-123%,7%) rotate(-10deg) scale(.9); filter: brightness(.62); }
+.spotlight-card[data-position="right"] { transform: translate(23%,7%) rotate(10deg) scale(.9); filter: brightness(.62); }
+.spotlight-art {
+  height: 54%; position: relative; display: grid; place-items: center; overflow: hidden;
+  border: 1px solid var(--trim); border-radius: 1.8cqw;
+  background: radial-gradient(ellipse at 49% 42%,#ffffff26,transparent 65%),
+    repeating-conic-gradient(from 7deg at 50% 53%,#ffffff0c 0deg 13deg,transparent 13deg 26deg),
+    linear-gradient(145deg,var(--mid),var(--base));
+}
+.spotlight-art::before,.spotlight-art::after { content:'';position:absolute;width:48%;aspect-ratio:1;border:1px solid var(--trim);opacity:.6;transform:rotate(45deg); }
+.spotlight-art::after { width:54%;opacity:.28; }
+.spotlight-art img { position: relative; width:100%;height:100%;min-height:0;object-fit:contain;z-index:1;filter:drop-shadow(0 2px 1px #081a20a6); }
+.spotlight-tier { height:10%;display:flex;align-items:center;justify-content:center;gap:1.4cqw;color:var(--trim);font:800 2.75cqw/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase; }
+.spotlight-tier::before,.spotlight-tier::after { content:'';width:11%;height:1px;background:var(--mid); }
+.spotlight-card strong { font-size:5cqw;letter-spacing:-.045em;line-height:1.05;margin-bottom:1.4cqw; }
+.spotlight-description { margin:0 1.4cqw;color:#eef0e4;font-size:3.1cqw;line-height:1.24;font-weight:600; }
+.spotlight-pager { display:flex;align-items:center;gap:3.8cqw;color:#ffe3a9;font-size:3.4cqw;font-weight:bold; }
+.spotlight-pager button { color:#fff1ce;border:1px solid #92ab9a;border-radius:2em;background:#163534;min-width:10cqw;min-height:9cqw;font:6cqw/1 Arial;cursor:pointer; }
+.jade-spotlight .spotlight-take { margin:2.6cqw 0 0;width:46%;min-height:10cqw; }
+.jade-spotlight .jade-reroll { margin-top:2.6cqw;width:auto;padding:1.3cqw 4cqw;min-height:8.7cqw;background:#163534; }
+.jade-spotlight button:focus-visible { outline:.5cqw solid #ffe7a1;outline-offset:.6cqw; }
+@media (prefers-reduced-motion:reduce) { .spotlight-card { transition:none; } }

@@ -24,6 +24,15 @@
   let accumulated = 0;
 
   const view = new JadeView(document.getElementById("game"), {
+    onChooseUpgrade(id) {
+      if (game.chooseUpgrade(id)) {
+        draw();
+        view.travelToNextFight();
+      }
+    },
+    onReroll() {
+      if (game.reroll()) draw();
+    },
     onNextStage() {
       if (game.nextStage()) draw();
     },
@@ -47,7 +56,8 @@
       // Use the four starter talents when the save cannot be read.
     }
     const combatConfig = JadeTalents.combatConfig(levels, JadeCombat.tuning);
-    return JadeSession.create({ seed, fixture, equipmentId, combatConfig, onFeedback: event => feedback.push(event) });
+    const draftSeed = requestedSeed === null ? crypto.getRandomValues(new Uint32Array(1))[0] : seed;
+    return JadeSession.create({ seed, draftSeed, fixture, equipmentId, combatConfig, onFeedback: event => feedback.push(event) });
   }
 
   function startEntry() {
@@ -166,8 +176,18 @@
   }
 
   game = createRun();
+  if (query.get("preview") === "upgrades") {
+    // Replay ordinary paid pushes so the preview opens on a real settled cabinet.
+    for (let frame = 0; frame < 5000; frame++) {
+      const phase = game.read().phase;
+      if (phase === "planning") game.press();
+      else if (phase !== "inserting" && phase !== "resolving") break;
+      game.step();
+    }
+    feedback = [];
+  }
   window.jadeSession = Object.freeze({ inspect: () => game.inspect(), getReplay: () => game.getReplay() });
   draw();
-  startEntry();
+  if (query.get("preview") !== "upgrades") startEntry();
   window.requestAnimationFrame(frame);
 })();

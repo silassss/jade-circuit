@@ -16,11 +16,18 @@
     legacyUpgradeReplay = false,
     legacyIncome,
     legacyBalance = false,
+    runDraft = !legacyUpgradeReplay && !legacyBalance,
+    draftSeed = seed,
+    legacyEpicPhysics = false,
     boardFactory = root.JadeBoard?.create,
     combatFactory = root.JadeCombat?.create,
     onFeedback = () => {},
   } = {}) {
-    const board = boardFactory(seed, { fixture });
+    const board = boardFactory(seed, { fixture, legacyEpicPhysics, onImpact(contact) {
+      const event = { type: "hailMaryImpact", pushId, tick, ...contact };
+      events.push(event);
+      onFeedback(event);
+    } });
     const actions = [];
     const events = [];
     const setupFalls = [];
@@ -30,6 +37,10 @@
       legacyUpgradeReplay,
       legacyIncome,
       legacyBalance,
+      runDraft,
+      random: root.JadeBoard.seededRandom("upgrades-" + draftSeed),
+      onReward: (kind, count) => board.dropReward(kind, count),
+      onLifeSteal: () => feedSpecial("heal"),
       equipmentId,
       onShower({ pushId, coinId, count }) {
         for (const coin of root.JadeBoard.insertShower(board, lastDropX, count)) {
@@ -61,7 +72,8 @@
 
     function getReplay() {
       const record = { seed, fixture, tick, actions, events, phase, combat: combat.getState() };
-      if (!legacyBalance) record.balanceVersion = 2;
+      if (!legacyBalance) record.balanceVersion = runDraft ? (legacyEpicPhysics ? 3 : 4) : 2;
+      if (runDraft) record.draftSeed = draftSeed;
       if (combatConfig) record.combatConfig = combatConfig;
       if (equipmentId) record.equipmentId = equipmentId;
       return structuredClone(record);
@@ -79,12 +91,14 @@
 
     function drop() {
       const x = targetX();
-      const coin = board.insert(x);
+      const state = combat.getState();
+      const heavy = state.reserve === 1 && state.passives?.includes("hailMary");
+      const coin = board.insert(x, "ordinary", heavy);
       if (!combat.spend({ pushId, coinId: coin.coinId })) {
         throw new Error("A physical player insertion could not be charged.");
       }
       lastDropX = coin.x;
-      const insertion = { type: "paidInsertion", pushId, tick, coinId: coin.coinId, x };
+      const insertion = { type: "paidInsertion", pushId, tick, coinId: coin.coinId, x, ...(heavy ? { heavy } : {}) };
       events.push(insertion);
       onFeedback(insertion);
       nextDropTick = tick + heldIntervalTicks;
@@ -128,8 +142,14 @@
     function chooseUpgrade(id) {
       if (phase !== "upgrade" || !combat.chooseUpgrade(id)) return false;
       actions.push({ type: "chooseUpgrade", id, tick });
-      phase = "planning";
+      phase = combat.getState().phase;
       onFeedback({ type: "upgradeSelected", id, tick });
+      return true;
+    }
+
+    function reroll() {
+      if (phase !== "upgrade" || !combat.reroll()) return false;
+      actions.push({ type: "reroll", tick });
       return true;
     }
 
@@ -197,14 +217,16 @@
       onFeedback({ type: "pushSettled", recap });
     }
 
-    return { press, release, chooseUpgrade, nextStage, step, read, inspect, getReplay };
+    return { press, release, chooseUpgrade, reroll, nextStage, step, read, inspect, getReplay };
   }
 
   function replay(record, options = {}) {
     // Old traces can end on the offer screen or continue with a recorded attack.
-    const legacyUpgradeReplay = record.phase === "upgrade" || record.actions.some(action => action.type === "chooseUpgrade");
+    const runDraft = record.balanceVersion >= 3;
+    const legacyUpgradeReplay = !runDraft && (record.phase === "upgrade" || record.actions.some(action => action.type === "chooseUpgrade"));
     const game = create({ ...options, seed: record.seed, fixture: record.fixture, equipmentId: record.equipmentId,
-      combatConfig: record.combatConfig, legacyUpgradeReplay, legacyBalance: record.balanceVersion === undefined,
+      combatConfig: record.combatConfig, runDraft, draftSeed: record.draftSeed, legacyUpgradeReplay, legacyBalance: record.balanceVersion === undefined,
+      legacyEpicPhysics: record.balanceVersion === 3,
       legacyIncome: record.combat?.maxReserve === undefined ? record.combat?.regen : undefined });
     for (const action of record.actions) {
       while (game.read().tick < action.tick) game.step();

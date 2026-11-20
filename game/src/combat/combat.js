@@ -66,8 +66,11 @@
   ]);
 
   const gear = root.JadeGear || require("../gear.js");
+  const drafts = root.JadeRunUpgrades || require("./run-upgrades.js");
 
-  function create({ onShower = () => {}, config = {}, equipmentId = null, legacyUpgradeReplay = false, legacyIncome, legacyBalance = false } = {}) {
+  function create({ onShower = () => {}, onReward = () => {}, onLifeSteal = () => {},
+    random = Math.random, config = {}, equipmentId = null, legacyUpgradeReplay = false,
+    legacyIncome, legacyBalance = false, runDraft = !legacyUpgradeReplay && !legacyBalance } = {}) {
     const rules = { ...tuning, ...config };
     // Unversioned recordings used the previous chapter HP and combo thresholds.
     if (legacyBalance) {
@@ -87,6 +90,12 @@
     }
     const maxHp = rules.hero.maxHp + bonus.health;
     const hero = { ...rules.hero, attack: rules.hero.attack + bonus.attack, maxHp, hp: maxHp, shield: rules.stageShield + bonus.shield };
+    const startingAttack = hero.attack;
+    const stats = { health: 0, attack: 0, crit: 0 };
+    const owned = new Set();
+    let hand = [];
+    let rerolled = false;
+    let lifeStealFalls = 0;
     function startEnemy(template) {
       return { ...template, hp: template.maxHp, coinShield: template.shell || 0 };
     }
@@ -124,7 +133,8 @@
         regen: rules.regen,
         completedPushes,
         upgrade,
-        offers: phase === "upgrade" ? offers : [],
+        offers: phase === "upgrade" ? (runDraft ? hand : offers) : [],
+        ...(runDraft ? { rerolled, critChance: stats.crit, passives: [...owned], lifeStealFalls } : {}),
         effects: { ...effects },
         activePush: activePush && { ...activePush, multiplier: multiplierFor(activePush.ordinaryFalls) },
         lastRecap,
@@ -154,6 +164,10 @@
       if (!["ordinary", "guard", "coinShower", "heal", "spark", "static"].includes(kind)) return null;
       activePush.totalFalls += 1;
       collectedIds.add(coinId);
+      if (owned.has("lifeSteal") && ++lifeStealFalls === 5) {
+        lifeStealFalls = 0;
+        onLifeSteal();
+      }
       const event = { pushId, coinId, tick };
       if (kind === "spark") {
         activePush.sparkFalls += 1;
@@ -176,6 +190,10 @@
       }
 
       if (kind === "heal") {
+        if (hero.hp === hero.maxHp && owned.has("heartOfSteel")) {
+          hero.shield += rules.heal;
+          return { ...event, type: "guard", shield: hero.shield, amount: rules.heal };
+        }
         const amount = Math.min(rules.heal, hero.maxHp - hero.hp);
         hero.hp += amount;
         return { ...event, type: "heal", hp: hero.hp, amount };
@@ -195,7 +213,7 @@
       const events = [];
       const emit = (type, details) => events.push(Object.freeze({ type, pushId, tick, ...details }));
       const damageEnemy = (amount) => {
-        enemy.hp = Math.max(0, enemy.hp - amount);
+        enemy.hp = Math.max(0, Math.round((enemy.hp - amount) * 100) / 100);
       };
       const multiplier = multiplierFor(ordinaryFalls);
       const hpBeforeAttack = hero.hp;
@@ -215,10 +233,11 @@
         if (!enemy.shell) enemy.coinShield = 0;
       }
       if (blocked && ordinaryFalls) emit("shieldBlocked", { strength: enemy.coinShield });
-      const damage = blocked ? 0 : ordinaryFalls * hero.attack * multiplier;
+      const critical = !blocked && ordinaryFalls > 0 && stats.crit > 0 && random() * 100 < stats.crit;
+      const damage = blocked ? 0 : Math.round(ordinaryFalls * hero.attack * multiplier * (critical ? 2 : 1) * 100) / 100;
       if (damage > 0) {
         damageEnemy(damage);
-        emit("ordinaryDamage", { amount: damage, ordinaryFalls, multiplier });
+        emit("ordinaryDamage", { amount: damage, ordinaryFalls, multiplier, ...(critical ? { critical } : {}) });
       }
 
       if (upgrade === "railgun" && ordinaryFalls >= rules.railgun.falls) {
@@ -286,6 +305,11 @@
       if (enemy.hp === 0 && hero.hp > 0) {
         phase = fight === rules.enemies.length ? "victory" : "stageClear";
         if (phase === "stageClear" && legacyUpgradeReplay && !upgrade) phase = "upgrade";
+        if (phase === "stageClear" && runDraft) {
+          phase = "upgrade";
+          hand = drafts.draw(random, owned);
+          rerolled = false;
+        }
       } else {
         phase = hero.hp === 0 ? "defeat" : "planning";
       }
@@ -305,16 +329,48 @@
 
       lastRecap = Object.freeze({
         pushId, tick, fight, phase, spent, ordinaryFalls, guardFalls, showerFalls,
-        multiplier, damage, blocked, specialSupply, hpBeforeAttack, events: Object.freeze(events),
+        multiplier, damage, blocked, specialSupply, hpBeforeAttack, ...(critical ? { critical } : {}), events: Object.freeze(events),
       });
       return lastRecap;
     }
 
     function chooseUpgrade(id) {
+      if (runDraft) {
+        const card = hand.find(offer => offer.id === id);
+        if (phase !== "upgrade" || !card) return false;
+        const { effect, amount } = card;
+        if (effect === "health") {
+          stats.health += amount;
+          const nextMax = Math.round(maxHp * (1 + stats.health / 100));
+          hero.hp += nextMax - hero.maxHp;
+          hero.maxHp = nextMax;
+        } else if (effect === "attack") {
+          stats.attack += amount;
+          hero.attack = startingAttack * (100 + stats.attack) / 100;
+        } else if (effect === "crit") {
+          stats.crit = Math.min(100, stats.crit + amount);
+        } else if (effect === "tower") {
+          onReward("tower", 30);
+        } else if (card.rarity === "Epic") {
+          owned.add(effect);
+        } else {
+          onReward(effect, amount);
+        }
+        phase = "stageClear";
+        hand = [];
+        return true;
+      }
       if (phase !== "upgrade" || !offers.some((offer) => offer.id === id)) return false;
       upgrade = id;
       phase = "stageClear";
       return nextStage();
+    }
+
+    function reroll() {
+      if (!runDraft || phase !== "upgrade" || rerolled) return false;
+      hand = drafts.draw(random, owned, hand);
+      rerolled = true;
+      return true;
     }
 
     function nextStage() {
@@ -329,7 +385,7 @@
       return true;
     }
 
-    return { getState, beginPush, spend, fall, settle, chooseUpgrade, nextStage };
+    return { getState, beginPush, spend, fall, settle, chooseUpgrade, reroll, nextStage };
   }
 
   root.JadeCombat = Object.freeze({ create, tuning, offers, equipment: gear.items });
